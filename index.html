@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MNEMO - Neural Recall Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+:root{--bg-dark:#080a16;--panel-bg:rgba(20,24,44,.72);--border-color:rgba(130,140,255,.18);--accent-purple:#8b5cf6;--accent-blue:#3b82f6;--accent-cyan:#22d3ee;--accent-amber:#f59e0b;--text-main:#f1f3fb;--text-muted:#9aa3b8;--success:#10b981;--danger:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+body{background:radial-gradient(1100px 600px at 12% -10%,rgba(139,92,246,.24),transparent 60%),radial-gradient(900px 500px at 100% 8%,rgba(34,211,238,.14),transparent 60%),var(--bg-dark);background-attachment:fixed;color:var(--text-main);min-height:100vh;overflow-x:hidden}
+#particle-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.app-container{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:22px;display:flex;flex-direction:column;gap:22px;min-height:100vh}
+header,.view-panel{background:var(--panel-bg);backdrop-filter:blur(16px);border:1px solid var(--border-color);border-radius:22px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--accent-purple),var(--accent-cyan));border-radius:14px;display:grid;place-items:center;font-size:21px;box-shadow:0 0 22px rgba(139,92,246,.5)}
+.brand-title{font-size:21px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#fff,var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand-subtitle{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px}
+.nav-steps{display:flex;gap:6px;background:rgba(0,0,0,.35);border-radius:14px;padding:5px;border:1px solid rgba(255,255,255,.06)}
+.step-btn{padding:9px 16px;border-radius:10px;border:none;background:transparent;color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;transition:.2s}
+.step-btn:hover:not(:disabled){color:#fff;background:rgba(255,255,255,.06)}
+.step-btn.active{background:linear-gradient(135deg,var(--accent-purple),var(--accent-blue));color:#fff;box-shadow:0 4px 16px rgba(99,102,241,.45)}
+.step-btn:disabled{opacity:.35;cursor:not-allowed}
+.view-panel{padding:30px;flex:1;display:none;flex-direction:column;gap:22px;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.view-panel.active{display:flex;animation:rise .4s ease}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+.hero{text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0 4px}
+.pill{font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-cyan);background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);padding:5px 14px;border-radius:99px}
+.hero h1{font-size:clamp(26px,4.4vw,40px);line-height:1.15;font-weight:900;max-width:720px}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent-purple),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--text-muted);font-size:15px;max-width:560px;line-height:1.6}
+.steps3{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.steps3 span{font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
+.input-group{display:flex;flex-direction:column;gap:14px;flex:1}
+.file-upload-box{border:2px dashed rgba(139,92,246,.45);border-radius:18px;padding:22px;text-align:center;background:linear-gradient(145deg,rgba(139,92,246,.08),rgba(34,211,238,.05));cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;transition:.2s}
+.file-upload-box:hover{border-color:var(--accent-cyan);transform:translateY(-2px);box-shadow:0 10px 30px rgba(34,211,238,.12)}
+.file-upload-box>span:first-child{font-size:30px!important}
+.file-preview-box{display:none;align-items:center;gap:10px;background:rgba(34,211,238,.14);border:1px solid var(--accent-cyan);padding:6px 14px;border-radius:99px;font-size:13px;color:var(--accent-cyan);font-weight:700}
+.btn-remove-file{background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#fca5a5;padding:2px 9px;border-radius:99px;font-size:11px;cursor:pointer}
+textarea{width:100%;height:230px;background:rgba(0,0,0,.4);border:1px solid var(--border-color);border-radius:18px;padding:18px;color:var(--text-main);font-size:15px;line-height:1.7;resize:vertical;outline:none;transition:.2s}
+textarea:focus{border-color:var(--accent-cyan);box-shadow:0 0 0 4px rgba(34,211,238,.12)}
+.ta-meta{font-size:12px;color:var(--text-muted);text-align:right;margin-top:-6px}
+.btn-primary{background:linear-gradient(135deg,var(--accent-purple),var(--accent-blue));color:#fff;border:none;padding:15px 30px;border-radius:14px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 24px rgba(99,102,241,.4);transition:.2s}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(99,102,241,.55)}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-secondary{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:var(--text-main);padding:12px 20px;border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:.2s}
+.btn-secondary:hover{background:rgba(255,255,255,.14)}
+.gate-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.5);padding:16px 20px;border-radius:16px;color:#fef3c7;font-size:14px}
+.gate-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden;flex-basis:100%}
+.gate-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent-purple),var(--accent-cyan));border-radius:99px;transition:width .5s}
+.mindmap-wrapper{position:relative;width:100%;height:600px;background:radial-gradient(circle at 50% 50%,rgba(139,92,246,.2),rgba(8,10,22,.8) 72%);border-radius:20px;border:1px solid var(--border-color);overflow:hidden}
+#mm-bg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+#svg-connections{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.mm-tools{position:absolute;top:14px;right:14px;z-index:8}
+.mm-tools button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff;padding:8px 13px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px)}
+.mm-link{fill:none;stroke:hsl(var(--h) 85% 65%/.6);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:6 9;animation:flow 1s linear infinite}
+.mm-link.done{stroke:#10b981;stroke-width:3.5;stroke-dasharray:none;animation:none;filter:drop-shadow(0 0 6px #10b981)}
+@keyframes flow{to{stroke-dashoffset:-30}}
+@keyframes pop{from{opacity:0;transform:scale(.6)}}
+@keyframes glow{50%{box-shadow:0 0 45px rgba(34,211,238,.8)}}
+@keyframes popIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.mindmap-wrapper.animating .map-node{transition:left .5s,top .5s,box-shadow .2s}
+.map-node{position:absolute;z-index:2;width:228px;display:flex;flex-direction:row;align-items:center;gap:12px;padding:12px 14px 12px 19px;color:#fff;cursor:pointer;user-select:none;touch-action:none;overflow:hidden;border-radius:18px;border:1px solid hsl(var(--h) 70% 60%/.35);background:linear-gradient(145deg,hsl(var(--h) 45% 20%/.93),rgba(12,15,32,.95));box-shadow:0 12px 28px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.09);transition:box-shadow .2s,transform .15s;animation:pop .45s backwards;animation-delay:calc(var(--i)*70ms)}
+.map-node::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,hsl(var(--h) 90% 66%),hsl(var(--h) 80% 45%))}
+.map-node:hover{transform:translateY(-4px) scale(1.03);box-shadow:0 16px 34px rgba(0,0,0,.6),0 0 28px hsl(var(--h) 85% 60%/.5)}
+.map-node.drag{cursor:grabbing;transform:scale(1.05)}
+.map-node.studied{border-color:rgba(16,185,129,.65);background:linear-gradient(145deg,rgba(16,185,129,.26),rgba(12,15,32,.95));box-shadow:0 0 24px rgba(16,185,129,.4)}
+.map-node.studied::before{background:linear-gradient(180deg,#34d399,#059669)}
+.map-node.center-node{width:260px;z-index:5;overflow:visible;justify-content:center;border:2px solid var(--accent-cyan);background:linear-gradient(135deg,rgba(139,92,246,.5),rgba(34,211,238,.4));animation:pop .5s backwards,glow 3s ease-in-out infinite}
+.center-node::before{display:none}
+.map-node.center-node:hover{transform:none}
+.center-node .node-title{font-size:16px;text-shadow:0 0 8px rgba(34,211,238,.6)}
+.node-title{font-size:14px;font-weight:800;line-height:1.25;color:#f6f7fd}
+.node-hint{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.nm-tag{font-size:9px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:hsl(var(--h) 90% 76%);margin-bottom:2px}
+.map-node.studied .nm-tag{color:#6ee7b7}
+.nm-emoji{flex:none;width:48px;height:48px;border-radius:15px;display:grid;place-items:center;font-size:25px;background:linear-gradient(145deg,hsl(var(--h) 80% 60%/.38),hsl(var(--h) 70% 40%/.12));border:1px solid hsl(var(--h) 80% 70%/.3)}
+.nm-body{min-width:0;flex:1}
+.nm-peek{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nm-check{flex:none;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.28);background:rgba(0,0,0,.2);color:transparent;font-weight:900;cursor:pointer;transition:.2s}
+.nm-check:hover{border-color:#34d399}
+.map-node.studied .nm-check{background:var(--success);border-color:var(--success);color:#fff}
+.ring{width:56px;height:56px;flex:none;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:6}
+.ring-bg{stroke:rgba(255,255,255,.18)}
+.ring-fg{stroke:#34d399;stroke-linecap:round;stroke-dasharray:163.4;stroke-dashoffset:163.4;transition:stroke-dashoffset .6s}
+@media(max-width:640px){.map-node{width:158px}.nm-peek,.nm-emoji{display:none}.map-node.center-node{width:196px}.report-grid{grid-template-columns:1fr!important;justify-items:center}.view-panel{padding:20px}}
+.modal-overlay{position:fixed;inset:0;background:rgba(3,4,12,.78);backdrop-filter:blur(10px);z-index:999;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.node-modal-card{--h:265;background:rgba(20,24,44,.98);border:1px solid hsl(var(--h) 80% 60%/.7);border-radius:24px;max-width:560px;width:100%;padding:30px;display:flex;flex-direction:column;gap:18px;box-shadow:0 24px 60px rgba(0,0,0,.8),0 0 40px hsl(var(--h) 80% 55%/.25);position:relative;animation:popIn .25s cubic-bezier(.175,.885,.32,1.275)}
+.modal-close{position:absolute;top:16px;right:20px;background:transparent;border:none;color:var(--text-muted);font-size:20px;cursor:pointer}
+.modal-concept-title{font-size:23px;font-weight:900}
+.modal-section-label{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent-cyan);font-weight:800;margin-bottom:6px}
+.modal-desc-box{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);padding:14px;border-radius:14px;font-size:14px;line-height:1.65}
+.nm-head{display:flex;gap:14px;align-items:center}
+.nm-big{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;font-size:31px;background:hsl(var(--h) 70% 50%/.3)}
+.hook-card{background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(139,92,246,.2));border:1px solid rgba(245,158,11,.7);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.hook-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:17px;font-weight:800;color:#fef3c7}
+.hk-w{background:rgba(34,211,238,.25);padding:3px 10px;border-radius:8px}
+.hk-s{background:rgba(245,158,11,.3);padding:3px 10px;border-radius:8px}
+.hk-m{color:#fff}
+.hk-op{opacity:.6}
+.hook-pic{font-size:13px;font-style:italic;color:#e9d5ff}
+.hook-say{align-self:flex-start;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:12px}
+.nm-foot{display:flex;gap:10px;justify-content:flex-end}
+.q-prog{display:flex;align-items:center;gap:14px;max-width:800px;width:100%;margin:0 auto;font-size:12.5px;font-weight:700;color:var(--text-muted);white-space:nowrap}
+.q-prog .gate-bar{flex:1}
+.quiz-container{display:flex;flex-direction:column;gap:18px;max-width:800px;margin:0 auto;width:100%}
+.quiz-card{background:rgba(0,0,0,.28);border:1px solid var(--border-color);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:16px;transition:.2s}
+.quiz-card:hover{border-color:rgba(139,92,246,.4)}
+.quiz-tag{align-self:flex-start;padding:4px 11px;border-radius:99px;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.35)}
+.quiz-tag.fill{background:rgba(245,158,11,.18);color:#fbbf24;border-color:rgba(245,158,11,.35)}
+.quiz-question{font-size:17px;font-weight:700;line-height:1.5;display:flex;gap:12px;align-items:flex-start}
+.qn{flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:14px;font-weight:900;background:linear-gradient(135deg,var(--accent-purple),var(--accent-blue))}
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.option-btn{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--text-main);padding:13px 14px;border-radius:14px;text-align:left;font-size:14px;cursor:pointer;transition:.18s}
+.option-btn .ol{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:900;background:rgba(255,255,255,.09)}
+.option-btn:hover{background:rgba(139,92,246,.16);border-color:var(--accent-purple);transform:translateY(-2px)}
+.option-btn.selected{background:rgba(59,130,246,.28);border-color:var(--accent-blue);font-weight:700;box-shadow:0 0 0 3px rgba(59,130,246,.2)}
+.option-btn.selected .ol{background:var(--accent-blue)}
+.fill-input{width:100%;background:rgba(0,0,0,.45);border:1px solid rgba(245,158,11,.6);border-radius:14px;padding:14px 16px;color:#fff;font-size:15px;outline:none}
+.fill-input:focus{box-shadow:0 0 0 4px rgba(245,158,11,.15)}
+.report-card{background:linear-gradient(145deg,rgba(22,27,50,.92),rgba(12,15,32,.96));border:1px solid var(--border-color);border-radius:24px;padding:30px;display:flex;flex-direction:column;gap:22px;margin-top:16px;animation:rise .5s}
+.report-grid{display:grid;grid-template-columns:230px 1fr;gap:26px;align-items:center;background:rgba(0,0,0,.25);padding:22px;border-radius:20px}
+.score-circle-box{--p:0;position:relative;width:200px;height:200px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:conic-gradient(var(--accent-cyan) calc(var(--p)*1%),rgba(255,255,255,.08) 0);justify-self:center}
+.score-circle-box::before{content:'';position:absolute;inset:13px;background:#0e1226;border-radius:50%}
+.score-circle-box>*{position:relative}
+.score-value{font-size:44px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.score-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-top:6px;font-weight:800}
+.rank-badge{margin-top:8px;padding:4px 12px;border-radius:99px;font-size:10.5px;font-weight:800;text-transform:uppercase}
+.rank-master{background:rgba(16,185,129,.2);color:#34d399;border:1px solid rgba(16,185,129,.45)}
+.rank-good{background:rgba(59,130,246,.2);color:#60a5fa;border:1px solid rgba(59,130,246,.45)}
+.rank-needs-work{background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.45)}
+.stats-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat-pill{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:4px}
+.stat-pill .num{font-size:26px;font-weight:900}
+.stat-pill .lbl{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:.8px}
+.weak-spot-item{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);padding:16px 18px;border-radius:16px;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.ws-chip{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fca5a5;background:rgba(239,68,68,.16);padding:3px 10px;border-radius:99px;margin-bottom:8px}
+.ws-q{color:#fff;font-weight:600;line-height:1.5}
+.ws-a{margin-top:8px;font-size:12px;color:var(--text-muted)}
+.ws-a b{color:#6ee7b7;background:rgba(16,185,129,.15);padding:3px 10px;border-radius:8px;margin-left:4px}
+.btn-audio{background:rgba(34,211,238,.14);border:1px solid var(--accent-cyan);color:var(--accent-cyan);border-radius:12px;width:42px;height:42px;cursor:pointer;font-size:17px;flex-shrink:0}
+.report-actions-bar{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;padding-top:18px;border-top:1px solid rgba(255,255,255,.08)}
+</style>
+</head>
+<body>
+<canvas id="particle-canvas"></canvas>
+<div class="app-container">
+  <header>
+    <div class="brand"><div class="brand-icon">⚡</div><div><div class="brand-title">MNEMO</div><div class="brand-subtitle">Neural Recall Engine</div></div></div>
+    <div class="nav-steps">
+      <button class="step-btn active" id="nav-step1">1. Source Notes</button>
+      <button class="step-btn" id="nav-step2" disabled>2. Mind Map</button>
+      <button class="step-btn" id="nav-step3" disabled>3. Active Recall</button>
+    </div>
+  </header>
+
+  <section class="view-panel active" id="view-step1">
+    <div class="hero"><span class="pill">✨ AI study engine</span><h1>Turn your notes into a <em>memory palace</em></h1><p>Paste your notes or drop in a diagram. MNEMO builds a mind map, catchy memory hooks and a recall quiz for you.</p><div class="steps3"><span>📝 Add notes</span><span>🕸️ Explore the map</span><span>🎯 Test your recall</span></div></div>
+    <div class="input-group">
+      <div class="file-upload-box" id="file-upload-box">
+        <span style="font-size:24px">📁</span>
+        <span style="font-size:13px;color:var(--text-muted)">Click to attach an image or diagram (JPG, PNG)</span>
+        <div class="file-preview-box" id="file-preview-box"><span id="file-preview-text"></span><button class="btn-remove-file" id="btn-remove-file">✖ Remove</button></div>
+        <input type="file" id="file-input" accept="image/png, image/jpeg, image/webp" style="display:none" />
+      </div>
+      <textarea id="notes-input" placeholder="Paste your study content here (or type additional context for your attached image)..."></textarea>
+      <div class="ta-meta"><span id="ta-count">0 characters</span></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end"><button class="btn-primary" id="btn-generate">Synthesize Radial Mind Map ⚡</button></div>
+  </section>
+
+  <section class="view-panel" id="view-step2">
+    <div class="gate-banner" id="gate-banner">
+      <span>🔒 <b>Study Gate Active:</b> Click nodes to inspect definitions &amp; memory hooks. Mark all nodes studied to unlock Active Recall.</span>
+      <span id="study-progress-text" style="font-weight:700">0 / 0 Studied</span><div class="gate-bar"><i id="gate-fill"></i></div>
+    </div>
+    <div class="mindmap-wrapper" id="mindmap-container"><canvas id="mm-bg"></canvas><svg id="svg-connections"></svg></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--text-muted)">💡 Click a card to open it, tick the circle to mark it studied, drag cards to rearrange.</span>
+      <button class="btn-primary" id="btn-to-quiz" disabled>Proceed to Active Recall ➔</button>
+    </div>
+  </section>
+
+  <section class="view-panel" id="view-step3">
+    <div class="hero" style="padding:0"><span class="pill">🎯 Active recall</span><h1 style="font-size:28px">Test what stuck</h1></div>
+    <div class="q-prog"><span id="q-count">0 / 0 answered</span><div class="gate-bar"><i id="q-fill"></i></div></div>
+    <div class="quiz-container" id="quiz-container"></div>
+    <div style="display:flex;justify-content:center;margin-top:10px"><button class="btn-primary" id="btn-submit-quiz">Submit Assessment 🎯</button></div>
+    <div class="report-card" id="report-card" style="display:none">
+      <div style="border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:12px"><h3 style="font-size:20px;font-weight:800">Assessment Summary</h3><span style="color:var(--text-muted);font-size:12px">Neural Retention Diagnostics</span></div>
+      <div class="report-grid">
+        <div class="score-circle-box"><div class="score-value" id="score-display">0%</div><div class="score-label">Retention Score</div><div class="rank-badge" id="rank-badge">Evaluating...</div></div>
+        <div class="stats-breakdown">
+          <div class="stat-pill"><span class="num" id="stat-correct" style="color:var(--success)">0</span><span class="lbl">Correct</span></div>
+          <div class="stat-pill"><span class="num" id="stat-weak" style="color:var(--danger)">0</span><span class="lbl">Weak Spots</span></div>
+          <div class="stat-pill"><span class="num" id="stat-total">0</span><span class="lbl">Total Questions</span></div>
+        </div>
+      </div>
+      <h4 style="font-size:15px;color:var(--accent-cyan)">Identified Weak Spots &amp; Audio Review:</h4>
+      <div id="weak-spots-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="report-actions-bar">
+        <button class="btn-secondary" id="btn-reread-notes">🔄 Re-read Nodes &amp; Mind Map</button>
+        <button class="btn-primary" id="btn-new-notes" style="padding:12px 20px;font-size:14px">➕ Attach Whole New Notes</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-overlay" id="node-modal"><div class="node-modal-card"></div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let appState = { centerTopic: '', nodes: [], questions: [], userAnswers: {}, attachedFile: null, activeModalNodeId: null, celebrated: false };
+
+// Background particles
+(() => {
+  const cv = $('particle-canvas'), ctx = cv.getContext('2d');
+  const fit = () => { cv.width = innerWidth; cv.height = innerHeight; };
+  addEventListener('resize', fit); fit();
+  const pts = Array.from({ length: 50 }, () => ({ x: Math.random() * cv.width, y: Math.random() * cv.height, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, r: Math.random() * 2 + 1 }));
+  const draw = () => {
+    ctx.clearRect(0, 0, cv.width, cv.height); ctx.fillStyle = 'rgba(139,92,246,.4)'; ctx.strokeStyle = 'rgba(99,102,241,.1)';
+    pts.forEach((p, i) => {
+      p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > cv.width) p.vx *= -1; if (p.y < 0 || p.y > cv.height) p.vy *= -1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+      for (let j = i + 1; j < pts.length; j++) if (Math.hypot(p.x - pts[j].x, p.y - pts[j].y) < 140) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke(); }
+    });
+    requestAnimationFrame(draw);
+  };
+  draw();
+})();
+
+const switchView = n => {
+  document.querySelectorAll('.view-panel').forEach((el, i) => el.classList.toggle('active', i + 1 === n));
+  document.querySelectorAll('.step-btn').forEach((b, i) => b.classList.toggle('active', i + 1 === n));
+};
+[1, 2, 3].forEach(n => $('nav-step' + n).addEventListener('click', () => switchView(n)));
+
+// File attach
+$('file-upload-box').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const img = new Image(); img.src = URL.createObjectURL(file);
+  img.onload = () => {
+    const r = Math.min(1, 800 / img.width, 800 / img.height), w = Math.round(img.width * r), h = Math.round(img.height * r);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
+    appState.attachedFile = { mimeType: 'image/jpeg', data: cv.toDataURL('image/jpeg', .8).split(',')[1], name: file.name };
+    $('file-preview-text').innerText = '📎 Attached: ' + file.name; $('file-preview-box').style.display = 'inline-flex';
+  };
+});
+$('btn-remove-file').addEventListener('click', e => {
+  e.stopPropagation(); appState.attachedFile = null; $('file-input').value = ''; $('file-preview-box').style.display = 'none'; $('file-preview-text').innerText = '';
+});
+
+// Server call (Gemini runs on the server with your secret key)
+// >>>>>>>>>>>>>>>>>>>>  PUT YOUR GEMINI API KEY BETWEEN THE QUOTES BELOW  <<<<<<<<<<<<<<<<<<<<
+const API_KEY = 'AQ.Ab8RN6IH4S70R-FXO8Z-WiXeTMzY6XaDFN8KwizEjS0m7o8AsQ';
+// >>>>>>>>>>>>>>>>>>>>  (everything below this line can stay as it is)  <<<<<<<<<<<<<<<<<<<<
+const MODEL = 'gemini-3.1-flash-lite';
+
+const buildPrompt = userText => `Analyze study content and extract 1 Main Central Core Topic and a natural number of sub-concept nodes (ANYWHERE BETWEEN 1 TO 7 MAX, based strictly on how much key content exists).
+
+CRITICAL INSTRUCTIONS:
+1. AUTOCORRECT MISTAKES: Silently fix any typos, spelling errors, or formatting glitches in the source text (e.g., "ToANSLOCATION" -> "Translocation", "xylemm" -> "Xylem").
+2. CRAFT MEMORY HOOKS THAT STICK (most important part):
+   - Format exactly: "Term = Sound-alike -> meaning in a few words". Example: "Xylem = Sky-lem -> pulls water up to the sky!"
+   - The sound-alike must be a real, funny, visual word or phrase that sounds like the term (Mitosis = My-Toes-Sis -> identical toe copies!).
+   - Max 12 words. Never a plain definition.
+   - Also give "hookImage": one vivid, silly mental picture (max 14 words) acting out the hook, e.g. "A giant straw slurping a river up into the clouds."
+   - Also give "emoji": exactly ONE emoji that fits the concept.
+
+Return JSON strictly in this format:
+{
+  "centerTopic": "Corrected Main Core Topic Title",
+  "nodes": [
+    {
+      "id": "1",
+      "title": "Corrected Sub-Concept Name",
+      "definition": "Clear, concise definition explaining this exact concept.",
+      "memoryHook": "Term = Sound-alike -> meaning (max 12 words!).",
+      "hookImage": "A silly vivid picture that acts out the hook.",
+      "emoji": "🌱"
+    }
+  ],
+  "questions": [
+    { "id": "q1", "type": "mcq", "conceptId": "1", "question": "Question?", "options": ["Option A", "Option B", "Option C", "Option D"], "answer": "Option A" },
+    { "id": "q2", "type": "fill", "conceptId": "1", "question": "Fill ____ blank.", "answer": "blank" }
+  ]
+}
+Content:
+${userText || 'Analyze attached diagram.'}`;
+
+const callGeminiAPI = async (userText, fileData) => {
+  if (!API_KEY) throw new Error('No API key set. Open index.html and paste your key into API_KEY at the top of the script.');
+  const parts = [{ text: buildPrompt(userText) }];
+  if (fileData) parts.push({ inlineData: { mimeType: fileData.mimeType, data: fileData.data } });
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
+    body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.3, thinkingConfig: { thinkingLevel: 'low' } } })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error?.message || 'API Error ' + res.status);
+  let text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+  if (!text) throw new Error('The AI returned an empty response. Try again.');
+  text = text.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+  return JSON.parse(text);
+};
+
+$('btn-generate').addEventListener('click', async () => {
+  const input = $('notes-input').value.trim();
+  if (!input && !appState.attachedFile) return alert('Please enter text notes or attach an image file first!');
+  const btn = $('btn-generate'); btn.disabled = true; btn.innerText = 'Synthesizing Radial Map... ⚡';
+  try {
+    const data = await callGeminiAPI(input, appState.attachedFile);
+    appState.centerTopic = data.centerTopic || 'Main Topic';
+    const center = { id: 'center', isCenter: true, title: appState.centerTopic, x: 0, y: 0, studied: true };
+    const subs = (data.nodes || []).slice(0, 7).map(n => ({ ...n, isCenter: false, x: 0, y: 0, studied: false }));
+    appState.nodes = [center, ...subs]; appState.questions = data.questions || [];
+    renderMindMap(); renderQuiz();
+    $('nav-step2').disabled = false; switchView(2);
+  } catch (err) { alert('Synthesis failed: ' + err.message); }
+  finally { btn.disabled = false; btn.innerText = 'Synthesize Radial Mind Map ⚡'; }
+});
+
+// ---------- Mind map ----------
+const HUES = [265, 200, 330, 35, 175, 285, 225], EMOJI = ['🧠', '⚡', '🔬', '🌱', '🧩', '💡', '🎯'];
+const NS = 'http://www.w3.org/2000/svg', mmEls = {};
+let mmMoved = false, mmNeedsLayout = false;
+const subsList = () => appState.nodes.filter(n => !n.isCenter);
+const place = n => { const e = mmEls[n.id]; if (e) { e.style.left = n.x + 'px'; e.style.top = n.y + 'px'; } };
+
+const drawConnections = () => {
+  const svg = $('svg-connections'), c = appState.nodes.find(n => n.isCenter);
+  if (!c || !mmEls[c.id]) return;
+  const mid = n => ({ x: n.x + mmEls[n.id].offsetWidth / 2, y: n.y + mmEls[n.id].offsetHeight / 2 }), a = mid(c);
+  subsList().forEach(n => {
+    let p = svg.querySelector('[data-id="' + n.id + '"]');
+    if (!p) { p = document.createElementNS(NS, 'path'); p.dataset.id = n.id; p.setAttribute('class', 'mm-link'); p.style.setProperty('--h', n.hue); svg.appendChild(p); }
+    const b = mid(n), k = .18;
+    p.setAttribute('d', `M${a.x},${a.y} Q${(a.x + b.x) / 2 + (a.y - b.y) * k},${(a.y + b.y) / 2 + (b.x - a.x) * k} ${b.x},${b.y}`);
+    p.classList.toggle('done', !!n.studied);
+  });
+};
+
+const layoutMindMap = animate => {
+  const box = $('mindmap-container'), w = box.clientWidth, h = box.clientHeight;
+  const c = appState.nodes.find(n => n.isCenter), subs = subsList();
+  if (!w || !c || !mmEls[c.id]) { mmNeedsLayout = true; return; }
+  mmNeedsLayout = false;
+  const nw = subs.length ? mmEls[subs[0].id].offsetWidth : 0, nh = subs.length ? mmEls[subs[0].id].offsetHeight : 0;
+  c.x = w / 2 - mmEls[c.id].offsetWidth / 2; c.y = h / 2 - mmEls[c.id].offsetHeight / 2;
+  const rx = Math.max(60, w / 2 - nw / 2 - 24), ry = Math.max(60, h / 2 - nh / 2 - 24);
+  subs.forEach((n, i) => { const a = 2 * Math.PI * i / subs.length - Math.PI / 2; n.x = w / 2 + rx * Math.cos(a) - nw / 2; n.y = h / 2 + ry * Math.sin(a) - nh / 2; });
+  box.classList.toggle('animating', !!animate);
+  appState.nodes.forEach(place); drawConnections();
+  if (animate) setTimeout(() => box.classList.remove('animating'), 600);
+};
+new ResizeObserver(() => { if (appState.nodes.length && appState.nodes.every(n => mmEls[n.id]) && (mmNeedsLayout || !mmMoved)) layoutMindMap(); }).observe($('mindmap-container'));
+
+const setStudied = (node, v) => { node.studied = v; mmEls[node.id]?.classList.toggle('studied', v); drawConnections(); checkGateStatus(); };
+
+const renderMindMap = () => {
+  const box = $('mindmap-container');
+  box.querySelectorAll('.map-node,.mm-tools').forEach(e => e.remove());
+  $('svg-connections').innerHTML = ''; Object.keys(mmEls).forEach(k => delete mmEls[k]); mmMoved = false; appState.celebrated = false;
+  const tools = document.createElement('div'); tools.className = 'mm-tools'; tools.innerHTML = '<button>↺ Reset layout</button>';
+  tools.firstChild.onclick = () => { mmMoved = false; layoutMindMap(true); }; box.appendChild(tools);
+  appState.nodes.forEach(node => {
+    const i = subsList().indexOf(node); node.hue = HUES[Math.max(i, 0) % HUES.length]; node.emoji = node.emoji || EMOJI[Math.max(i, 0) % EMOJI.length];
+    const el = document.createElement('div');
+    el.className = 'map-node' + (node.isCenter ? ' center-node' : '') + (node.studied && !node.isCenter ? ' studied' : '');
+    el.style.setProperty('--h', node.hue); el.style.setProperty('--i', i + 1);
+    el.innerHTML = node.isCenter
+      ? `<svg class="ring" viewBox="0 0 64 64"><circle class="ring-bg" cx="32" cy="32" r="26"/><circle class="ring-fg" id="ring-fg" cx="32" cy="32" r="26"/></svg><div><div class="node-title">${esc(node.title)}</div><div class="node-hint" id="center-count" style="color:var(--accent-amber)"></div></div>`
+      : `<div class="nm-emoji">${esc(node.emoji)}</div><div class="nm-body"><div class="nm-tag">Concept ${i + 1}</div><div class="node-title">${esc(node.title)}</div><div class="nm-peek">${esc(node.memoryHook)}</div></div><button class="nm-check" title="Mark studied">✓</button>`;
+    mmEls[node.id] = el; box.appendChild(el);
+    if (!node.isCenter) el.querySelector('.nm-check').onclick = e => { e.stopPropagation(); setStudied(node, !node.studied); };
+    el.addEventListener('pointerdown', e => {
+      if (e.target.closest('.nm-check')) return;
+      const sx = e.clientX, sy = e.clientY, ox = node.x, oy = node.y; let moved = false;
+      el.setPointerCapture(e.pointerId); el.style.zIndex = 20; el.classList.add('drag');
+      const mv = ev => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy; if (Math.hypot(dx, dy) > 5) moved = true; if (!moved) return;
+        mmMoved = true;
+        node.x = Math.min(Math.max(0, ox + dx), box.clientWidth - el.offsetWidth); node.y = Math.min(Math.max(0, oy + dy), box.clientHeight - el.offsetHeight);
+        place(node); drawConnections();
+      };
+      const up = () => {
+        el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
+        el.style.zIndex = ''; el.classList.remove('drag'); if (!moved && !node.isCenter) openNodeModal(node);
+      };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
+  });
+  layoutMindMap(); checkGateStatus();
+};
+
+// ---------- Modal ----------
+const card = document.querySelector('.node-modal-card');
+card.innerHTML = `<button class="modal-close" id="btn-modal-close">✖</button>
+<div class="nm-head"><div class="nm-big" id="m-emoji"></div><div><div class="modal-section-label" id="m-count"></div><div class="modal-concept-title" id="modal-title"></div></div></div>
+<div><div class="modal-section-label">📖 What it means</div><div class="modal-desc-box" id="modal-desc"></div></div>
+<div><div class="modal-section-label">🧠 Memory hook</div><div class="hook-card"><div class="hook-line" id="modal-hook"></div><div class="hook-pic" id="m-pic"></div><button class="hook-say" id="m-say">🔊 Say it</button></div></div>
+<div class="nm-foot"><button class="btn-secondary" id="m-prev">◀</button><button class="btn-secondary" id="m-next">▶</button><button class="btn-primary" id="btn-modal-mark" style="padding:10px 20px;font-size:13px"></button></div>`;
+const curNode = () => appState.nodes.find(n => n.id === appState.activeModalNodeId);
+const openNodeModal = node => {
+  appState.activeModalNodeId = node.id;
+  const list = subsList(), hook = node.memoryHook || '';
+  card.style.setProperty('--h', node.hue);
+  $('m-emoji').textContent = node.emoji; $('m-count').textContent = `Concept ${list.indexOf(node) + 1} of ${list.length}`;
+  $('modal-title').textContent = node.title; $('modal-desc').textContent = node.definition || node.desc || 'No definition available.';
+  const m = hook.match(/^(.+?)\s*=\s*(.+?)\s*(?:->|→|=>)\s*(.+)$/);
+  $('modal-hook').innerHTML = m ? `<span class="hk-w">${esc(m[1])}</span><span class="hk-op">=</span><span class="hk-s">${esc(m[2])}</span><span class="hk-op">→</span><span class="hk-m">${esc(m[3])}</span>` : esc(hook || 'Picture the key idea!');
+  $('m-pic').textContent = node.hookImage ? '🖼️ Picture it: ' + node.hookImage : '';
+  $('btn-modal-mark').textContent = node.studied ? '✓ Studied (tap to undo)' : 'Got it, mark studied ✓';
+  $('node-modal').classList.add('active');
+};
+const closeNodeModal = () => { $('node-modal').classList.remove('active'); appState.activeModalNodeId = null; };
+const stepModal = d => { const l = subsList(), i = l.indexOf(curNode()); openNodeModal(l[(i + d + l.length) % l.length]); };
+$('btn-modal-close').onclick = closeNodeModal;
+$('node-modal').addEventListener('click', e => { if (e.target.id === 'node-modal') closeNodeModal(); });
+$('m-prev').onclick = () => stepModal(-1); $('m-next').onclick = () => stepModal(1);
+$('m-say').onclick = () => { const n = curNode(); if (n) speechSynthesis.speak(new SpeechSynthesisUtterance(n.title + '. ' + (n.memoryHook || ''))); };
+$('btn-modal-mark').onclick = () => {
+  const n = curNode(); if (!n) return; setStudied(n, !n.studied);
+  if (n.studied) { const nx = subsList().find(x => !x.studied); nx ? openNodeModal(nx) : closeNodeModal(); } else openNodeModal(n);
+};
+document.addEventListener('keydown', e => {
+  if (!appState.activeModalNodeId) return;
+  if (e.key === 'Escape') closeNodeModal(); if (e.key === 'ArrowRight') stepModal(1); if (e.key === 'ArrowLeft') stepModal(-1);
+});
+
+const checkGateStatus = () => {
+  const subs = subsList(), total = subs.length, done = subs.filter(n => n.studied).length, all = total > 0 && done === total;
+  $('study-progress-text').innerText = `${done} / ${total} Studied`; $('gate-fill').style.width = (total ? done / total * 100 : 0) + '%';
+  $('btn-to-quiz').disabled = !all; $('nav-step3').disabled = !all;
+  $('gate-banner').style.background = all ? 'rgba(16,185,129,.15)' : ''; $('gate-banner').style.borderColor = all ? 'var(--success)' : '';
+  const fg = $('ring-fg'); if (fg) fg.style.strokeDashoffset = 163.4 * (1 - (total ? done / total : 0));
+  const cc = $('center-count'); if (cc) cc.textContent = all ? '🏆 All mastered!' : `${done}/${total} studied`;
+  if (all && !appState.celebrated) { appState.celebrated = true; confetti({ particleCount: 90, spread: 70, origin: { y: .6 } }); }
+  if (!all) appState.celebrated = false;
+};
+
+// ---------- Quiz ----------
+$('btn-to-quiz').addEventListener('click', () => { renderQuiz(); switchView(3); });
+
+const qProg = () => { const n = Object.values(appState.userAnswers).filter(Boolean).length, t = appState.questions.length; $('q-fill').style.width = (t ? n / t * 100 : 0) + '%'; $('q-count').textContent = n + ' / ' + t + ' answered'; };
+const renderQuiz = () => {
+  $('report-card').style.display = 'none';
+  const box = $('quiz-container'); box.innerHTML = ''; appState.userAnswers = {}; qProg();
+  appState.questions.forEach((q, idx) => {
+    const c = document.createElement('div'); c.className = 'quiz-card';
+    const fill = q.type === 'fill';
+    c.innerHTML = `<span class="quiz-tag ${fill ? 'fill' : ''}">${fill ? '✍️ Fill in the Blank' : '🔘 Multiple Choice'}</span><div class="quiz-question"><span class="qn">${idx + 1}</span><span>${esc(q.question)}</span></div><div class="quiz-body"></div>`;
+    const body = c.querySelector('.quiz-body');
+    if (fill) {
+      const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'fill-input'; inp.placeholder = 'Type missing term...';
+      inp.addEventListener('input', e => { appState.userAnswers[q.id] = e.target.value.trim(); qProg(); }); body.appendChild(inp);
+    } else {
+      const grid = document.createElement('div'); grid.className = 'options-grid';
+      (q.options || []).forEach((opt, oi) => {
+        const b = document.createElement('button'); b.className = 'option-btn'; b.innerHTML = '<span class="ol">' + 'ABCDEF'[oi] + '</span><span></span>'; b.lastChild.textContent = opt;
+        b.addEventListener('click', () => { grid.querySelectorAll('.option-btn').forEach(x => x.classList.remove('selected')); b.classList.add('selected'); appState.userAnswers[q.id] = opt; qProg(); });
+        grid.appendChild(b);
+      });
+      body.appendChild(grid);
+    }
+    box.appendChild(c);
+  });
+};
+
+$('btn-submit-quiz').addEventListener('click', () => {
+  let correct = 0; const weak = [];
+  appState.questions.forEach(q => {
+    const ua = (appState.userAnswers[q.id] || '').toLowerCase(), ta = String(q.answer).toLowerCase();
+    if (ua && (ua === ta || (ta.includes(ua) && ua.length > 2))) correct++;
+    else { const c = appState.nodes.find(n => n.id === q.conceptId); weak.push({ title: c ? c.title : 'Concept Topic', question: q.question, answer: q.answer }); }
+  });
+  const total = appState.questions.length || 1, pct = Math.round(correct / total * 100);
+  $('score-display').innerText = pct + '%'; document.querySelector('.score-circle-box').style.setProperty('--p', pct); $('stat-correct').innerText = correct; $('stat-weak').innerText = weak.length; $('stat-total').innerText = appState.questions.length;
+  const badge = $('rank-badge');
+  if (pct === 100) { badge.innerText = '🏆 Mastered'; badge.className = 'rank-badge rank-master'; }
+  else if (pct >= 60) { badge.innerText = '⚡ Good Progress'; badge.className = 'rank-badge rank-good'; }
+  else { badge.innerText = '⚠️ Needs Review'; badge.className = 'rank-badge rank-needs-work'; }
+  const list = $('weak-spots-list'); list.innerHTML = '';
+  if (!weak.length) {
+    list.innerHTML = '<div style="color:var(--success);font-weight:600;padding:12px;background:rgba(16,185,129,.1);border-radius:10px;border:1px solid var(--success)">🎉 Perfect Recall! All concepts mastered with 100% accuracy!</div>';
+    confetti({ particleCount: 120, spread: 80, origin: { y: .6 } });
+  } else weak.forEach(w => {
+    const it = document.createElement('div'); it.className = 'weak-spot-item';
+    it.innerHTML = `<div><span class="ws-chip">${esc(w.title)}</span><div class="ws-q">${esc(w.question)}</div><div class="ws-a">Correct answer:<b>${esc(w.answer)}</b></div></div><button class="btn-audio" title="Listen">🔊</button>`;
+    it.querySelector('.btn-audio').addEventListener('click', () => speechSynthesis.speak(new SpeechSynthesisUtterance(`Key concept: ${w.title}. Remember, ${w.answer}`)));
+    list.appendChild(it);
+  });
+  $('report-card').style.display = 'flex'; $('report-card').scrollIntoView({ behavior: 'smooth' });
+});
+
+$('btn-reread-notes').addEventListener('click', () => { $('report-card').style.display = 'none'; renderQuiz(); switchView(2); });
+$('btn-new-notes').addEventListener('click', () => {
+  $('report-card').style.display = 'none'; $('notes-input').value = ''; if (appState.attachedFile) $('btn-remove-file').click();
+  appState.nodes = []; appState.questions = []; appState.userAnswers = {}; $('quiz-container').innerHTML = '';
+  $('nav-step2').disabled = true; $('nav-step3').disabled = true; switchView(1);
+});
+$('notes-input').addEventListener('input', e => { $('ta-count').textContent = e.target.value.length.toLocaleString() + ' characters'; });
+(() => {
+  const cv = $('mm-bg'), ctx = cv.getContext('2d'), pts = [];
+  new ResizeObserver(() => { cv.width = cv.parentElement.clientWidth; cv.height = cv.parentElement.clientHeight; }).observe(cv.parentElement);
+  for (let i = 0; i < 38; i++) pts.push({ x: Math.random(), y: Math.random(), vx: (Math.random() - .5) * .0004, vy: (Math.random() - .5) * .0004, r: Math.random() * 1.8 + .8 });
+  const draw = () => {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    pts.forEach((p, i) => {
+      p.x = (p.x + p.vx + 1) % 1; p.y = (p.y + p.vy + 1) % 1;
+      const X = p.x * cv.width, Y = p.y * cv.height;
+      ctx.fillStyle = 'rgba(34,211,238,.55)'; ctx.beginPath(); ctx.arc(X, Y, p.r, 0, 6.283); ctx.fill();
+      for (let j = i + 1; j < pts.length; j++) {
+        const X2 = pts[j].x * cv.width, Y2 = pts[j].y * cv.height, d = Math.hypot(X - X2, Y - Y2);
+        if (d < 120) { ctx.strokeStyle = `rgba(139,92,246,${.25 * (1 - d / 120)})`; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X2, Y2); ctx.stroke(); }
+      }
+    });
+    requestAnimationFrame(draw);
+  };
+  draw();
+})();
+</script>
+</body>
+</html>
